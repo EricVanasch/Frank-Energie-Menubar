@@ -70,6 +70,12 @@ struct PricePanel: View {
     @State private var selectedPoint: PricePoint?
     @State private var loginItemMessage: String?
 
+    private var appVersionText: String {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
+        return "Versie \(version) (\(build))"
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
@@ -112,6 +118,8 @@ struct PricePanel: View {
             HStack {
                 Text(model.sourceDescription)
                     .foregroundStyle(PanelStyle.secondaryText)
+                Text(appVersionText)
+                    .foregroundStyle(PanelStyle.secondaryText.opacity(0.85))
                 Spacer()
                 Toggle("Start bij login", isOn: $launchAtLogin)
                     .toggleStyle(.checkbox)
