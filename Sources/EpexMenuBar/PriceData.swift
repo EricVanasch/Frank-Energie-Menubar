@@ -592,7 +592,7 @@ struct P1HistoryStore {
         }
 
         let duration = sample.timestamp.timeIntervalSince(previous.timestamp)
-        guard duration <= 10 * 60 else {
+        guard duration <= 20 * 60 else {
             return nil
         }
 

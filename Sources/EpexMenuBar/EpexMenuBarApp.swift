@@ -534,16 +534,27 @@ enum P1UsageAggregator {
     }
 
     private static func item(start: Date, end: Date, label: String, intervals: [P1UsageInterval]) -> P1ChartItem {
-        let bucketIntervals = intervals.filter { start <= $0.end && $0.end < end }
+        let overlapping = intervals.compactMap { interval -> (P1UsageInterval, Double)? in
+            let overlapStart = max(start, interval.start)
+            let overlapEnd = min(end, interval.end)
+            let overlapSeconds = overlapEnd.timeIntervalSince(overlapStart)
+            let intervalSeconds = interval.end.timeIntervalSince(interval.start)
+            guard overlapSeconds > 0, intervalSeconds > 0 else {
+                return nil
+            }
+
+            return (interval, overlapSeconds / intervalSeconds)
+        }
+
         return P1ChartItem(
             start: start,
             end: end,
             label: label,
-            importKWh: bucketIntervals.map(\.importKWh).reduce(0, +),
-            exportKWh: bucketIntervals.map(\.exportKWh).reduce(0, +),
-            importCostEUR: bucketIntervals.map(\.importCostEUR).reduce(0, +),
-            exportCreditEUR: bucketIntervals.map(\.exportCreditEUR).reduce(0, +),
-            intervalCount: bucketIntervals.count
+            importKWh: overlapping.map { $0.0.importKWh * $0.1 }.reduce(0, +),
+            exportKWh: overlapping.map { $0.0.exportKWh * $0.1 }.reduce(0, +),
+            importCostEUR: overlapping.map { $0.0.importCostEUR * $0.1 }.reduce(0, +),
+            exportCreditEUR: overlapping.map { $0.0.exportCreditEUR * $0.1 }.reduce(0, +),
+            intervalCount: overlapping.count
         )
     }
 
