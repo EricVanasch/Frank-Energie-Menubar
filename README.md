@@ -32,10 +32,11 @@ scripts/run-apple-silicon.sh
 Zonder configuratie haalt de app live kwartierprijzen op via de publieke Frank Energie GraphQL API:
 
 - `resolution: PT15M`
-- importlijn: `allInPrice * 100`, dus cent/kWh
-- exportlijn voorlopig: `marketPrice * 100`, dus cent/kWh
-
-Die exportlijn is bewust conservatief gelabeld als marktprijs. Zodra de exacte Frank-terugleverformule uit je PDF beschikbaar is, kan die regel worden vervangen door de echte terugleververgoeding.
+- `Import app`: Frank-app component op basis van BELPEX
+- `Import factuur`: Dynamisch SL FEB26 QH formule uit de tariefkaart
+- `All-in import`: `allInPrice * 100`, dus de API-prijs in cent/kWh voor een extra kWh
+- `EPEX export`: `marketPrice * 100`, dus cent/kWh
+- `Export`: terugleverformule uit de tariefkaart
 
 Je kunt ook een eigen endpoint instellen. De app verwacht dan een JSON-array met kwartierpunten:
 

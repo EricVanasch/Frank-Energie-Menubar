@@ -148,7 +148,7 @@ struct PricePanel: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text("EPEX kwartiertarieven")
                     .font(.headline)
-                    Text("Import app/factuur en export in cent/kWh")
+                    Text("Import app/factuur/all-in en export in cent/kWh")
                     .font(.caption)
                     .foregroundStyle(PanelStyle.secondaryText)
             }
@@ -187,6 +187,7 @@ struct PricePanel: View {
 
                 PricePill(title: "Import app", value: point.importAppCentsPerKWh, color: PanelStyle.importAppLine)
                 PricePill(title: "Import factuur", value: point.importCentsPerKWh, color: PanelStyle.importLine)
+                PricePill(title: "All-in import", value: point.allInImportCentsPerKWh, color: PanelStyle.allInImportLine)
                 PricePill(title: "EPEX export", value: point.marketCentsPerKWh, color: PanelStyle.marketLine)
                 PricePill(title: "Export", value: point.exportCentsPerKWh, color: PanelStyle.exportLine)
             } else {
@@ -1243,6 +1244,7 @@ struct PriceChart: View {
                         drawLine(in: &context, size: size, values: points.map(\.marketCentsPerKWh), color: PanelStyle.marketLine)
                         drawLine(in: &context, size: size, values: points.map(\.importAppCentsPerKWh), color: PanelStyle.importAppLine)
                         drawLine(in: &context, size: size, values: points.map(\.importCentsPerKWh), color: PanelStyle.importLine)
+                        drawLine(in: &context, size: size, values: points.map(\.allInImportCentsPerKWh), color: PanelStyle.allInImportLine)
                         drawLine(in: &context, size: size, values: points.map(\.exportCentsPerKWh), color: PanelStyle.exportLine)
                         drawNow(in: &context, size: size, now: timeline.date)
                         drawSelection(in: &context, size: size)
@@ -1259,6 +1261,7 @@ struct PriceChart: View {
                     HStack(spacing: 12) {
                         LegendDot(color: PanelStyle.importAppLine, title: "Import app")
                         LegendDot(color: PanelStyle.importLine, title: "Factuur")
+                        LegendDot(color: PanelStyle.allInImportLine, title: "All-in import")
                         LegendDot(color: PanelStyle.marketLine, title: "EPEX export")
                         LegendDot(color: PanelStyle.exportLine, title: "Export")
                         LegendDot(color: PanelStyle.nowLine, title: "Nu")
@@ -1292,7 +1295,7 @@ struct PriceChart: View {
     }
 
     private var valueRange: ClosedRange<Double> {
-        let values = points.flatMap { [$0.marketCentsPerKWh, $0.importAppCentsPerKWh, $0.importCentsPerKWh, $0.exportCentsPerKWh] }
+        let values = points.flatMap { [$0.marketCentsPerKWh, $0.importAppCentsPerKWh, $0.importCentsPerKWh, $0.allInImportCentsPerKWh, $0.exportCentsPerKWh] }
         guard let minimum = values.min(), let maximum = values.max() else {
             return 0...1
         }
@@ -1418,12 +1421,14 @@ struct PriceChart: View {
         context.stroke(rule, with: .color(.white.opacity(0.82)), style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
 
         let importPoint = canvasPoint(index: index, value: selectedPoint.importCentsPerKWh, size: size)
+        let allInImportPoint = canvasPoint(index: index, value: selectedPoint.allInImportCentsPerKWh, size: size)
         let importAppPoint = canvasPoint(index: index, value: selectedPoint.importAppCentsPerKWh, size: size)
         let exportPoint = canvasPoint(index: index, value: selectedPoint.exportCentsPerKWh, size: size)
         let marketPoint = canvasPoint(index: index, value: selectedPoint.marketCentsPerKWh, size: size)
         context.fill(Path(ellipseIn: CGRect(x: marketPoint.x - 4, y: marketPoint.y - 4, width: 8, height: 8)), with: .color(PanelStyle.marketLine))
         context.fill(Path(ellipseIn: CGRect(x: importAppPoint.x - 4, y: importAppPoint.y - 4, width: 8, height: 8)), with: .color(PanelStyle.importAppLine))
         context.fill(Path(ellipseIn: CGRect(x: importPoint.x - 4, y: importPoint.y - 4, width: 8, height: 8)), with: .color(PanelStyle.importLine))
+        context.fill(Path(ellipseIn: CGRect(x: allInImportPoint.x - 4, y: allInImportPoint.y - 4, width: 8, height: 8)), with: .color(PanelStyle.allInImportLine))
         context.fill(Path(ellipseIn: CGRect(x: exportPoint.x - 4, y: exportPoint.y - 4, width: 8, height: 8)), with: .color(PanelStyle.exportLine))
     }
 
@@ -1507,6 +1512,7 @@ enum PanelStyle {
     static let marketLine = Color(red: 1.0, green: 0.92, blue: 0.54)
     static let importAppLine = Color(red: 1.0, green: 0.68, blue: 0.22)
     static let importLine = Color(red: 1.0, green: 0.36, blue: 0.18)
+    static let allInImportLine = Color(red: 0.55, green: 0.78, blue: 1.0)
     static let importValue = Color.white
     static let exportLine = Color(red: 0.26, green: 0.88, blue: 0.58)
     static let nowLine = Color(red: 1.0, green: 0.78, blue: 0.24)

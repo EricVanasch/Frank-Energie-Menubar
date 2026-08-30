@@ -7,6 +7,7 @@ struct PricePoint: Identifiable, Hashable {
     let marketCentsPerKWh: Double
     let importAppCentsPerKWh: Double
     let importCentsPerKWh: Double
+    let allInImportCentsPerKWh: Double
     let exportCentsPerKWh: Double
 
     var displayStart: Date {
@@ -333,6 +334,7 @@ struct PriceService {
                 marketCentsPerKWh: record.marketCentsPerKWh ?? record.importCentsPerKWh,
                 importAppCentsPerKWh: record.importAppCentsPerKWh ?? record.importCentsPerKWh,
                 importCentsPerKWh: record.importCentsPerKWh,
+                allInImportCentsPerKWh: record.allInImportCentsPerKWh ?? record.importCentsPerKWh,
                 exportCentsPerKWh: record.exportCentsPerKWh
             )
         }
@@ -386,6 +388,7 @@ struct PriceService {
                 let marketPrice = FrankBelgianFormula.marketCentsPerKWh(fromFrankMarketPrice: record.marketPrice)
                 let importAppPrice = FrankBelgianFormula.importAppCentsPerKWh(fromFrankMarketPrice: record.marketPrice)
                 let importPrice = FrankBelgianFormula.importCentsPerKWh(fromFrankMarketPrice: record.marketPrice)
+                let allInImportPrice = record.allInPrice * 100
                 let exportPrice = FrankBelgianFormula.exportCentsPerKWh(fromFrankMarketPrice: record.marketPrice)
                 return PricePoint(
                     start: record.from,
@@ -393,6 +396,7 @@ struct PriceService {
                     marketCentsPerKWh: marketPrice,
                     importAppCentsPerKWh: importAppPrice,
                     importCentsPerKWh: importPrice,
+                    allInImportCentsPerKWh: allInImportPrice,
                     exportCentsPerKWh: exportPrice
                 )
             }
@@ -434,6 +438,7 @@ struct PriceService {
                 marketCentsPerKWh: importPrice - 1.5,
                 importAppCentsPerKWh: importPrice - 1.5,
                 importCentsPerKWh: importPrice,
+                allInImportCentsPerKWh: importPrice + 14.0,
                 exportCentsPerKWh: exportPrice
             )
         }
@@ -839,6 +844,7 @@ struct RemotePriceRecord: Decodable {
     let marketCentsPerKWh: Double?
     let importAppCentsPerKWh: Double?
     let importCentsPerKWh: Double
+    let allInImportCentsPerKWh: Double?
     let exportCentsPerKWh: Double
 }
 
