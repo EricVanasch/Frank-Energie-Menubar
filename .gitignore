@@ -1,0 +1,9 @@
+.DS_Store
+.build/
+dist/
+tmp/
+*.xcuserdata/
+DerivedData/
+
+# Lokale tariefkaart/reference-PDF, niet nodig voor build en mogelijk niet publiek.
+Web Page.pdf
