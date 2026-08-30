@@ -24,12 +24,14 @@ struct DailyPriceSummary: Identifiable, Codable, Hashable {
     let marketAverageCentsPerKWh: Double
     let importAppAverageCentsPerKWh: Double?
     let importAverageCentsPerKWh: Double
+    let allInImportAverageCentsPerKWh: Double?
     let exportAverageCentsPerKWh: Double
     let pointCount: Int
     let updatedAt: Date
 
     var id: String { dateKey }
     var resolvedImportAppAverageCentsPerKWh: Double { importAppAverageCentsPerKWh ?? importAverageCentsPerKWh }
+    var resolvedAllInImportAverageCentsPerKWh: Double { allInImportAverageCentsPerKWh ?? importAverageCentsPerKWh }
 }
 
 struct P1Sample: Codable, Hashable {
@@ -720,6 +722,7 @@ struct PriceHistoryStore {
             marketAverageCentsPerKWh: points.map(\.marketCentsPerKWh).reduce(0, +) / count,
             importAppAverageCentsPerKWh: points.map(\.importAppCentsPerKWh).reduce(0, +) / count,
             importAverageCentsPerKWh: points.map(\.importCentsPerKWh).reduce(0, +) / count,
+            allInImportAverageCentsPerKWh: points.map(\.allInImportCentsPerKWh).reduce(0, +) / count,
             exportAverageCentsPerKWh: points.map(\.exportCentsPerKWh).reduce(0, +) / count,
             pointCount: points.count,
             updatedAt: Date()

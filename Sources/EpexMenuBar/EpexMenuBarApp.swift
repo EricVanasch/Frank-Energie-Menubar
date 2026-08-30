@@ -105,7 +105,7 @@ struct PricePanel: View {
             ) { monthKey in
                 model.selectMonth(monthKey)
             }
-            .frame(height: 205)
+            .frame(height: 430)
 
             DailyAverageView(summary: model.selectedDaySummary)
 
@@ -239,7 +239,7 @@ struct MonthlyAverageSection: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Daggemiddelden")
                         .font(.caption.weight(.semibold))
-                    Text("Import app/factuur, EPEX export en export per dag")
+                    Text("Import app/factuur/all-in, EPEX export en export per dag")
                         .font(.caption2)
                         .foregroundStyle(PanelStyle.secondaryText)
                 }
@@ -815,6 +815,7 @@ struct MonthlyAverageDetail: View {
 
                 CompactAveragePill(title: "Import app", value: summary.resolvedImportAppAverageCentsPerKWh, color: PanelStyle.importAppLine)
                 CompactAveragePill(title: "Import factuur", value: summary.importAverageCentsPerKWh, color: PanelStyle.importLine)
+                CompactAveragePill(title: "All-in import", value: summary.resolvedAllInImportAverageCentsPerKWh, color: PanelStyle.allInImportLine)
                 CompactAveragePill(title: "EPEX export", value: summary.marketAverageCentsPerKWh, color: PanelStyle.marketLine)
                 CompactAveragePill(title: "Export", value: summary.exportAverageCentsPerKWh, color: PanelStyle.exportLine)
             } else {
@@ -891,6 +892,7 @@ struct MonthlyAverageChart: View {
                     drawLine(in: &context, size: size, values: summaries.map(\.marketAverageCentsPerKWh), color: PanelStyle.marketLine)
                     drawLine(in: &context, size: size, values: summaries.map(\.resolvedImportAppAverageCentsPerKWh), color: PanelStyle.importAppLine)
                     drawLine(in: &context, size: size, values: summaries.map(\.importAverageCentsPerKWh), color: PanelStyle.importLine)
+                    drawLine(in: &context, size: size, values: summaries.map(\.resolvedAllInImportAverageCentsPerKWh), color: PanelStyle.allInImportLine)
                     drawLine(in: &context, size: size, values: summaries.map(\.exportAverageCentsPerKWh), color: PanelStyle.exportLine)
                     drawPoints(in: &context, size: size)
                     drawDayLabels(in: &context, size: size)
@@ -915,6 +917,7 @@ struct MonthlyAverageChart: View {
                     HStack(spacing: 12) {
                         LegendDot(color: PanelStyle.importAppLine, title: "Import app")
                         LegendDot(color: PanelStyle.importLine, title: "Factuur")
+                        LegendDot(color: PanelStyle.allInImportLine, title: "All-in")
                         LegendDot(color: PanelStyle.marketLine, title: "EPEX export")
                         LegendDot(color: PanelStyle.exportLine, title: "Export")
                         Spacer()
@@ -949,7 +952,7 @@ struct MonthlyAverageChart: View {
 
     private var valueRange: ClosedRange<Double> {
         let values = summaries.flatMap {
-            [$0.marketAverageCentsPerKWh, $0.resolvedImportAppAverageCentsPerKWh, $0.importAverageCentsPerKWh, $0.exportAverageCentsPerKWh]
+            [$0.marketAverageCentsPerKWh, $0.resolvedImportAppAverageCentsPerKWh, $0.importAverageCentsPerKWh, $0.resolvedAllInImportAverageCentsPerKWh, $0.exportAverageCentsPerKWh]
         }
         guard let minimum = values.min(), let maximum = values.max() else {
             return 0...1
@@ -1015,6 +1018,7 @@ struct MonthlyAverageChart: View {
             fillPoint(in: &context, at: canvasPoint(index: index, value: summary.marketAverageCentsPerKWh, size: size), color: PanelStyle.marketLine)
             fillPoint(in: &context, at: canvasPoint(index: index, value: summary.resolvedImportAppAverageCentsPerKWh, size: size), color: PanelStyle.importAppLine)
             fillPoint(in: &context, at: canvasPoint(index: index, value: summary.importAverageCentsPerKWh, size: size), color: PanelStyle.importLine)
+            fillPoint(in: &context, at: canvasPoint(index: index, value: summary.resolvedAllInImportAverageCentsPerKWh, size: size), color: PanelStyle.allInImportLine)
             fillPoint(in: &context, at: canvasPoint(index: index, value: summary.exportAverageCentsPerKWh, size: size), color: PanelStyle.exportLine)
         }
     }
@@ -1069,6 +1073,7 @@ struct MonthlyAverageChart: View {
         fillPoint(in: &context, at: canvasPoint(index: index, value: selectedSummary.marketAverageCentsPerKWh, size: size), color: PanelStyle.marketLine)
         fillPoint(in: &context, at: canvasPoint(index: index, value: selectedSummary.resolvedImportAppAverageCentsPerKWh, size: size), color: PanelStyle.importAppLine)
         fillPoint(in: &context, at: canvasPoint(index: index, value: selectedSummary.importAverageCentsPerKWh, size: size), color: PanelStyle.importLine)
+        fillPoint(in: &context, at: canvasPoint(index: index, value: selectedSummary.resolvedAllInImportAverageCentsPerKWh, size: size), color: PanelStyle.allInImportLine)
         fillPoint(in: &context, at: canvasPoint(index: index, value: selectedSummary.exportAverageCentsPerKWh, size: size), color: PanelStyle.exportLine)
     }
 
@@ -1152,6 +1157,7 @@ struct DailyAverageView: View {
             if let summary {
                 CompactAveragePill(title: "Import app", value: summary.resolvedImportAppAverageCentsPerKWh, color: PanelStyle.importAppLine)
                 CompactAveragePill(title: "Import factuur", value: summary.importAverageCentsPerKWh, color: PanelStyle.importLine)
+                CompactAveragePill(title: "All-in import", value: summary.resolvedAllInImportAverageCentsPerKWh, color: PanelStyle.allInImportLine)
                 CompactAveragePill(title: "EPEX export", value: summary.marketAverageCentsPerKWh, color: PanelStyle.marketLine)
                 CompactAveragePill(title: "Export", value: summary.exportAverageCentsPerKWh, color: PanelStyle.exportLine)
             }
