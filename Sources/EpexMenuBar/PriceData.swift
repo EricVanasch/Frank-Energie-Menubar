@@ -598,7 +598,7 @@ struct P1HistoryStore {
         }
 
         let pricePoint = pricePoints.first { $0.displayStart <= sample.timestamp && sample.timestamp < $0.displayEnd }
-        let importCost = importKWh * ((pricePoint?.importCentsPerKWh ?? 0) / 100)
+        let importCost = importKWh * ((pricePoint?.allInImportCentsPerKWh ?? 0) / 100)
         let exportCredit = exportKWh * ((pricePoint?.exportCentsPerKWh ?? 0) / 100)
         let interval = P1UsageInterval(
             start: previous.timestamp,

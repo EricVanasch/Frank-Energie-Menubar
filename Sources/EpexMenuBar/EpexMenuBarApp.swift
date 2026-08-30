@@ -385,7 +385,7 @@ struct P1UsageSection: View {
             HStack(spacing: 12) {
                 CompactAveragePill(title: "Totaal import", value: total.importKWh, color: PanelStyle.importLine, suffix: "kWh")
                 CompactAveragePill(title: "Totaal injectie", value: total.exportKWh, color: PanelStyle.exportLine, suffix: "kWh")
-                CompactAveragePill(title: "Te betalen", value: total.importCostEUR, color: PanelStyle.importAppLine, suffix: "EUR")
+                CompactAveragePill(title: "All-in te betalen", value: total.importCostEUR, color: PanelStyle.importAppLine, suffix: "EUR")
                 CompactAveragePill(title: "Teruglevering", value: total.exportCreditEUR, color: PanelStyle.exportLine, suffix: "EUR")
                 Spacer()
                 CompactAveragePill(title: "Netto", value: total.netCostEUR, color: PanelStyle.marketLine, suffix: "EUR")
@@ -779,7 +779,7 @@ struct P1AggregateDetail: View {
 
             CompactAveragePill(title: "Import", value: item.importKWh, color: PanelStyle.importLine, suffix: "kWh")
             CompactAveragePill(title: "Injectie", value: item.exportKWh, color: PanelStyle.exportLine, suffix: "kWh")
-            CompactAveragePill(title: "Kost", value: item.importCostEUR, color: PanelStyle.importAppLine, suffix: "EUR")
+            CompactAveragePill(title: "All-in kost", value: item.importCostEUR, color: PanelStyle.importAppLine, suffix: "EUR")
             CompactAveragePill(title: "Credit", value: item.exportCreditEUR, color: PanelStyle.exportLine, suffix: "EUR")
         }
         .frame(height: 34)
