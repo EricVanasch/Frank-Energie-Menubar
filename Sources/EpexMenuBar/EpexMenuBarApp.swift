@@ -95,7 +95,7 @@ struct PricePanel: View {
                 currentSample: model.p1CurrentSample,
                 intervals: model.p1Intervals
             )
-            .frame(height: 275)
+            .frame(height: 430)
 
             MonthlyAverageSection(
                 monthKeys: model.availableMonthKeys,
@@ -378,7 +378,7 @@ struct P1UsageSection: View {
             }
 
             P1AggregatedChart(items: items, mode: mode, selectedItem: $selectedItem)
-                .frame(maxHeight: .infinity)
+                .frame(height: 230)
 
             P1AggregateDetail(item: selectedItem ?? items.last(where: \.hasUsage) ?? total, mode: mode)
 
