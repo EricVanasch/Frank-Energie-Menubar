@@ -591,11 +591,6 @@ struct P1HistoryStore {
             return nil
         }
 
-        let duration = sample.timestamp.timeIntervalSince(previous.timestamp)
-        guard duration <= 20 * 60 else {
-            return nil
-        }
-
         let importKWh = sample.totalImportKWh - previous.totalImportKWh
         let exportKWh = sample.totalExportKWh - previous.totalExportKWh
         guard importKWh > 0 || exportKWh > 0 else {
