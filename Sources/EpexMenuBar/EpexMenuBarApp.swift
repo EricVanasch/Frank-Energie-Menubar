@@ -68,6 +68,7 @@ struct PricePanel: View {
     @AppStorage("launchAtLogin") private var launchAtLogin = true
     @AppStorage("registeredLoginItemMetadataVersion") private var registeredLoginItemMetadataVersion = 0
     @State private var selectedPoint: PricePoint?
+    @State private var selectedQuarterStart: Date?
     @State private var loginItemMessage: String?
 
     private var appVersionText: String {
@@ -88,7 +89,7 @@ struct PricePanel: View {
             VStack(alignment: .leading, spacing: 8) {
                 header
 
-                PriceChart(points: model.points, selectedPoint: $selectedPoint)
+                PriceChart(points: model.points, selectedPoint: $selectedPoint, selectedQuarterStart: $selectedQuarterStart)
                     .frame(height: 230)
 
                 detail
@@ -99,7 +100,8 @@ struct PricePanel: View {
             P1UsageSection(
                 status: model.p1Status,
                 currentSample: model.p1CurrentSample,
-                intervals: model.p1Intervals
+                intervals: model.p1Intervals,
+                selectedQuarterStart: $selectedQuarterStart
             )
             .frame(height: 430)
 
@@ -149,6 +151,23 @@ struct PricePanel: View {
         .onAppear {
             updateLaunchAtLogin(launchAtLogin)
         }
+        .onChange(of: selectedQuarterStart) { quarterStart in
+            selectedPoint = point(containing: quarterStart)
+        }
+        .onChange(of: model.points) { _ in
+            selectedPoint = point(containing: selectedQuarterStart)
+        }
+    }
+
+    private func point(containing quarterStart: Date?) -> PricePoint? {
+        guard let quarterStart else {
+            return nil
+        }
+
+        return model.points.first { $0.displayStart <= quarterStart && quarterStart < $0.displayEnd }
+            ?? model.points.min { left, right in
+                abs(left.displayStart.timeIntervalSince(quarterStart)) < abs(right.displayStart.timeIntervalSince(quarterStart))
+            }
     }
 
     private var header: some View {
@@ -323,6 +342,7 @@ struct P1UsageSection: View {
     let status: String
     let currentSample: P1Sample?
     let intervals: [P1UsageInterval]
+    @Binding var selectedQuarterStart: Date?
     @State private var mode: P1PeriodMode = .day
     @State private var selectedDate = Date()
     @State private var selectedItem: P1ChartItem?
@@ -339,6 +359,14 @@ struct P1UsageSection: View {
 
     private var total: P1ChartItem {
         P1UsageAggregator.total(from: items, mode: mode, selectedDate: selectedDate, calendar: calendar)
+    }
+
+    private var effectiveSelectedItem: P1ChartItem? {
+        if mode == .day, let selectedQuarterStart {
+            return items.first { $0.start <= selectedQuarterStart && selectedQuarterStart < $0.end }
+        }
+
+        return selectedItem
     }
 
     var body: some View {
@@ -362,7 +390,7 @@ struct P1UsageSection: View {
             }
 
             HStack(spacing: 8) {
-                P1ModeSelector(mode: $mode, selectedDate: $selectedDate, selectedItem: $selectedItem)
+                P1ModeSelector(mode: $mode, selectedDate: $selectedDate, selectedItem: $selectedItem, selectedQuarterStart: $selectedQuarterStart)
 
                 Spacer()
 
@@ -385,10 +413,10 @@ struct P1UsageSection: View {
                 .buttonStyle(.plain)
             }
 
-            P1AggregatedChart(items: items, mode: mode, selectedItem: $selectedItem)
+            P1AggregatedChart(items: items, mode: mode, selectedItem: $selectedItem, selectedQuarterStart: $selectedQuarterStart)
                 .frame(height: 230)
 
-            P1AggregateDetail(item: selectedItem ?? items.last(where: \.hasUsage) ?? total, mode: mode)
+            P1AggregateDetail(item: effectiveSelectedItem ?? items.last(where: \.hasUsage) ?? total, mode: mode)
 
             HStack(spacing: 12) {
                 CompactAveragePill(title: "Totaal import", value: total.importKWh, color: PanelStyle.importLine, suffix: "kWh")
@@ -428,6 +456,7 @@ struct P1UsageSection: View {
     private func movePeriod(by value: Int) {
         selectedDate = calendar.date(byAdding: mode.component, value: value, to: selectedDate) ?? selectedDate
         selectedItem = nil
+        selectedQuarterStart = nil
     }
 }
 
@@ -435,6 +464,7 @@ struct P1ModeSelector: View {
     @Binding var mode: P1PeriodMode
     @Binding var selectedDate: Date
     @Binding var selectedItem: P1ChartItem?
+    @Binding var selectedQuarterStart: Date?
 
     var body: some View {
         HStack(spacing: 4) {
@@ -442,6 +472,7 @@ struct P1ModeSelector: View {
                 Button {
                     mode = candidate
                     selectedItem = nil
+                    selectedQuarterStart = nil
                 } label: {
                     Text(candidate.title)
                         .font(.caption.weight(.semibold))
@@ -580,6 +611,15 @@ struct P1AggregatedChart: View {
     let items: [P1ChartItem]
     let mode: P1PeriodMode
     @Binding var selectedItem: P1ChartItem?
+    @Binding var selectedQuarterStart: Date?
+
+    private var effectiveSelectedItem: P1ChartItem? {
+        if mode == .day, let selectedQuarterStart {
+            return items.first { $0.start <= selectedQuarterStart && selectedQuarterStart < $0.end }
+        }
+
+        return selectedItem
+    }
 
     var body: some View {
         GeometryReader { geometry in
@@ -624,15 +664,16 @@ struct P1AggregatedChart: View {
                     .gesture(
                         DragGesture(minimumDistance: 0)
                             .onChanged { value in
-                                selectedItem = item(atX: value.location.x, width: geometry.size.width)
+                                selectItem(atX: value.location.x, width: geometry.size.width)
                             }
                     )
                     .onContinuousHover { phase in
                         switch phase {
                         case .active(let location):
-                            selectedItem = item(atX: location.x, width: geometry.size.width)
+                            selectItem(atX: location.x, width: geometry.size.width)
                         case .ended:
                             selectedItem = nil
+                            selectedQuarterStart = nil
                         }
                     }
             }
@@ -761,7 +802,7 @@ struct P1AggregatedChart: View {
     }
 
     private func drawSelection(in context: inout GraphicsContext, size: CGSize) {
-        guard let selectedItem, let index = items.firstIndex(of: selectedItem) else {
+        guard let selectedItem = effectiveSelectedItem, let index = items.firstIndex(of: selectedItem) else {
             return
         }
 
@@ -778,6 +819,12 @@ struct P1AggregatedChart: View {
         rule.move(to: CGPoint(x: x, y: plot.minY))
         rule.addLine(to: CGPoint(x: x, y: plot.maxY))
         context.stroke(rule, with: .color(.white.opacity(0.82)), style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+    }
+
+    private func selectItem(atX x: CGFloat, width: CGFloat) {
+        let item = item(atX: x, width: width)
+        selectedItem = item
+        selectedQuarterStart = mode == .day ? item?.start : nil
     }
 
     private func item(atX x: CGFloat, width: CGFloat) -> P1ChartItem? {
@@ -1323,6 +1370,15 @@ struct PricePill: View {
 struct PriceChart: View {
     let points: [PricePoint]
     @Binding var selectedPoint: PricePoint?
+    @Binding var selectedQuarterStart: Date?
+
+    private var effectiveSelectedPoint: PricePoint? {
+        if let selectedQuarterStart {
+            return points.first { $0.displayStart <= selectedQuarterStart && selectedQuarterStart < $0.displayEnd }
+        }
+
+        return selectedPoint
+    }
 
     var body: some View {
         GeometryReader { geometry in
@@ -1370,15 +1426,16 @@ struct PriceChart: View {
                     .gesture(
                         DragGesture(minimumDistance: 0)
                             .onChanged { value in
-                                selectedPoint = point(atX: value.location.x, width: geometry.size.width)
+                                selectPoint(atX: value.location.x, width: geometry.size.width)
                             }
                     )
                     .onContinuousHover { phase in
                         switch phase {
                         case .active(let location):
-                            selectedPoint = point(atX: location.x, width: geometry.size.width)
+                            selectPoint(atX: location.x, width: geometry.size.width)
                         case .ended:
                             selectedPoint = nil
+                            selectedQuarterStart = nil
                         }
                     }
             }
@@ -1500,7 +1557,7 @@ struct PriceChart: View {
     }
 
     private func drawSelection(in context: inout GraphicsContext, size: CGSize) {
-        guard let selectedPoint, let index = points.firstIndex(of: selectedPoint) else {
+        guard let selectedPoint = effectiveSelectedPoint, let index = points.firstIndex(of: selectedPoint) else {
             return
         }
 
@@ -1521,6 +1578,12 @@ struct PriceChart: View {
         context.fill(Path(ellipseIn: CGRect(x: importPoint.x - 4, y: importPoint.y - 4, width: 8, height: 8)), with: .color(PanelStyle.importLine))
         context.fill(Path(ellipseIn: CGRect(x: allInImportPoint.x - 4, y: allInImportPoint.y - 4, width: 8, height: 8)), with: .color(PanelStyle.allInImportLine))
         context.fill(Path(ellipseIn: CGRect(x: exportPoint.x - 4, y: exportPoint.y - 4, width: 8, height: 8)), with: .color(PanelStyle.exportLine))
+    }
+
+    private func selectPoint(atX x: CGFloat, width: CGFloat) {
+        let point = point(atX: x, width: width)
+        selectedPoint = point
+        selectedQuarterStart = point?.displayStart
     }
 
     private func point(atX x: CGFloat, width: CGFloat) -> PricePoint? {
