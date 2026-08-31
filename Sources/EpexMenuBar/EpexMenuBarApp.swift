@@ -671,20 +671,42 @@ struct P1AggregatedChart: View {
 
     private func drawXAxisLabels(in context: inout GraphicsContext, size: CGSize) {
         let plot = plotRect(size: size)
-        for index in xLabelIndices {
-            let x = xPosition(index: index, size: size)
-            var tick = Path()
-            tick.move(to: CGPoint(x: x, y: plot.maxY))
-            tick.addLine(to: CGPoint(x: x, y: plot.maxY + 4))
-            context.stroke(tick, with: .color(PanelStyle.gridLine), lineWidth: 1)
 
-            context.draw(
-                Text(items[index].label)
-                    .font(.caption2.weight(.semibold))
-                    .foregroundColor(PanelStyle.axisText),
-                at: CGPoint(x: x, y: plot.maxY + 13)
-            )
+        if mode == .day, let first = items.first {
+            var calendar = Calendar(identifier: .gregorian)
+            calendar.timeZone = TimeZone(identifier: "Europe/Brussels") ?? .current
+            let dayStart = calendar.startOfDay(for: first.start)
+
+            for hour in stride(from: 0, through: 24, by: 4) {
+                guard
+                    let labelDate = calendar.date(byAdding: .hour, value: hour, to: dayStart),
+                    let x = xPosition(for: labelDate, size: size)
+                else {
+                    continue
+                }
+
+                drawXAxisTick(in: &context, x: x, label: "\(hour % 24)u", plot: plot)
+            }
+            return
         }
+
+        for index in xLabelIndices {
+            drawXAxisTick(in: &context, x: xPosition(index: index, size: size), label: items[index].label, plot: plot)
+        }
+    }
+
+    private func drawXAxisTick(in context: inout GraphicsContext, x: CGFloat, label: String, plot: CGRect) {
+        var tick = Path()
+        tick.move(to: CGPoint(x: x, y: plot.maxY))
+        tick.addLine(to: CGPoint(x: x, y: plot.maxY + 4))
+        context.stroke(tick, with: .color(PanelStyle.gridLine), lineWidth: 1)
+
+        context.draw(
+            Text(label)
+                .font(.caption2.weight(.semibold))
+                .foregroundColor(PanelStyle.axisText),
+            at: CGPoint(x: x, y: plot.maxY + 13)
+        )
     }
 
     private var xLabelIndices: [Int] {
@@ -708,12 +730,21 @@ struct P1AggregatedChart: View {
         }
 
         let plot = plotRect(size: size)
-        let slotWidth = plot.width / CGFloat(items.count)
-        let barWidth = max(slotWidth * 0.32, 1)
 
         for index in items.indices {
             let item = items[index]
-            let x = plot.minX + (CGFloat(index) + 0.5) * slotWidth
+            let slotWidth: CGFloat
+            let x: CGFloat
+
+            if mode == .day, let startX = xPosition(for: item.start, size: size), let endX = xPosition(for: item.end, size: size) {
+                slotWidth = max(endX - startX, 1)
+                x = startX + slotWidth / 2
+            } else {
+                slotWidth = plot.width / CGFloat(items.count)
+                x = plot.minX + (CGFloat(index) + 0.5) * slotWidth
+            }
+
+            let barWidth = max(slotWidth * 0.32, 1)
             drawBar(in: &context, x: x - barWidth * 0.58, width: barWidth, value: item.importKWh, plot: plot, color: PanelStyle.importLine)
             drawBar(in: &context, x: x + barWidth * 0.58, width: barWidth, value: item.exportKWh, plot: plot, color: PanelStyle.exportLine)
         }
@@ -735,7 +766,14 @@ struct P1AggregatedChart: View {
         }
 
         let plot = plotRect(size: size)
-        let x = xPosition(index: index, size: size)
+        let x: CGFloat
+        if mode == .day,
+           let startX = xPosition(for: selectedItem.start, size: size),
+           let endX = xPosition(for: selectedItem.end, size: size) {
+            x = startX + (endX - startX) / 2
+        } else {
+            x = xPosition(index: index, size: size)
+        }
         var rule = Path()
         rule.move(to: CGPoint(x: x, y: plot.minY))
         rule.addLine(to: CGPoint(x: x, y: plot.maxY))
@@ -750,6 +788,15 @@ struct P1AggregatedChart: View {
         let plot = plotRect(size: CGSize(width: width, height: 1))
         let clampedX = min(max(x, plot.minX), plot.maxX)
         let ratio = (clampedX - plot.minX) / plot.width
+
+        if mode == .day, let first = items.first, let last = items.last {
+            let duration = last.end.timeIntervalSince(first.start)
+            let date = first.start.addingTimeInterval(duration * Double(ratio))
+            if let containingItem = items.first(where: { $0.start <= date && date < $0.end }) {
+                return containingItem
+            }
+        }
+
         let index = Int((ratio * CGFloat(items.count - 1)).rounded())
         return items[min(max(index, items.startIndex), items.endIndex - 1)]
     }
@@ -760,12 +807,31 @@ struct P1AggregatedChart: View {
             return plot.midX
         }
 
+        if mode == .day, let x = xPosition(for: items[index].start, size: size) {
+            return x
+        }
+
         let slotWidth = plot.width / CGFloat(items.count)
         return plot.minX + (CGFloat(index) + 0.5) * slotWidth
     }
 
+    private func xPosition(for date: Date, size: CGSize) -> CGFloat? {
+        guard mode == .day, let first = items.first, let last = items.last else {
+            return nil
+        }
+
+        let duration = last.end.timeIntervalSince(first.start)
+        guard duration > 0, first.start <= date, date <= last.end else {
+            return nil
+        }
+
+        let plot = plotRect(size: size)
+        let ratio = CGFloat(date.timeIntervalSince(first.start) / duration)
+        return plot.minX + plot.width * ratio
+    }
+
     private func plotRect(size: CGSize) -> CGRect {
-        CGRect(x: 52, y: 10, width: max(size.width - 62, 1), height: max(size.height - 62, 1))
+        ChartGeometry.plotRect(size: size)
     }
 }
 
@@ -1509,7 +1575,13 @@ struct PriceChart: View {
     }
 
     private func plotRect(size: CGSize) -> CGRect {
-        CGRect(x: 44, y: 10, width: max(size.width - 54, 1), height: max(size.height - 58, 1))
+        ChartGeometry.plotRect(size: size)
+    }
+}
+
+enum ChartGeometry {
+    static func plotRect(size: CGSize) -> CGRect {
+        CGRect(x: 52, y: 10, width: max(size.width - 62, 1), height: max(size.height - 58, 1))
     }
 }
 
